@@ -1,19 +1,3 @@
-'''
-残差块
-    串联一个层改变函数类，我们希望能扩大函数类
-    残差块加入快速通道来得到f(x)=x+g(x)
-
-ResNet块
-    高宽减半的ResNet 块(步幅为2)
-    后接多个高宽不变的ResNet块
-
-ResNet架构
-    类似VGG和GoogleNet的总体架构
-    但替换成了ResNet块
-总结
-    残差块是的很深的网络更加容易训练
-        珊瑚可以训练一千层的网络
-'''
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -58,15 +42,14 @@ class Residual(nn.Module):  #@save
         return F.relu(Y)
 
 
-#ResNet的前两层跟之前介绍的GoogLeNet中的一样： 在输出通道数为64、步幅为2的\(7 \times 7\)卷积层后，
-#接步幅为2的\(3 \times 3\)的最大汇聚层。 不同之处在于ResNet每个卷积层后增加了批量规范化层。
+#ResNet的前两层：在输出通道数为64、步幅为2的7*7卷积层后，
+#接步幅为2的3*3的最大汇聚层。并ResNet每个卷积层后增加了批量规范化层。
+#但这里因为cifar10数据size较小因此卷积层改为3*3，并删去池化层
 b1 = nn.Sequential(nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1),
                    nn.BatchNorm2d(64), nn.ReLU())
 
-# GoogLeNet在后面接了4个由Inception块组成的模块。ResNet则使用4个由残差块组成的模块，每个模块使
-# 用若干个同样输出通道数的残差块。 第一个模块的通道数同输入通道数一致。 由于之前已经使用了步幅为2
-# 的最大汇聚层，所以无须减小高和宽。 之后的每个模块在第一个残差块里将上一个模块的通道数翻倍，并将
-# 高和宽减半。
+#ResNet则使用4个由残差块组成的模块，每个模块使用若干个同样输出通道数的残差块。 第一个模块的通道数同输入通道数一致。 由于之前已经使用了步幅为2
+# 的最大汇聚层，所以无须减小高和宽。 之后的每个模块在第一个残差块里将上一个模块的通道数翻倍，并将高和宽减半。
 def resnet_block(input_channels, num_channels, num_residuals,
                  first_block=False):
     blk = []
@@ -83,7 +66,7 @@ b3 = nn.Sequential(*resnet_block(64, 128, 2))
 b4 = nn.Sequential(*resnet_block(128, 256, 2))
 b5 = nn.Sequential(*resnet_block(256, 512, 2))
 
-#最后，与GoogLeNet一样，在ResNet中加入全局平均汇聚层，以及全连接层输出。
+#在ResNet中加入全局平均汇聚层，以及全连接层输出。
 net = nn.Sequential(b1, b2, b3, b4, b5,
                     nn.AdaptiveAvgPool2d((1,1)),
                     nn.Flatten(), nn.Linear(512, 10))
@@ -92,9 +75,7 @@ net = nn.Sequential(b1, b2, b3, b4, b5,
 
 from torch.utils import data
 def load_data_CIFAR10(batch_size):
-    """下载Fashion-MNIST数据集，然后将其加载到内存中
-
-    Defined in :numref:`sec_fashion_mnist`"""
+    """下载cifar10数据集，然后将其加载到内存中"""
     # 准备数据集并预处理
     transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),  #先四周填充0，在吧图像随机裁剪成32*32
@@ -119,7 +100,6 @@ def load_data_CIFAR10(batch_size):
 
 def evaluate_accuracy_gpu(net, data_iter, device=None):
     """使用GPU计算模型在数据集上的精度
-
     Defined in :numref:`sec_lenet`"""
     if isinstance(net, nn.Module):
         net.eval()  # 设置为评估模式
@@ -138,9 +118,6 @@ def evaluate_accuracy_gpu(net, data_iter, device=None):
     return metric[0] / metric[1]
 
 def Train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
-    """用GPU训练模型(在第六章定义)
-
-    Defined in :numref:`sec_lenet`"""
     def init_weights(m):
         if type(m) == nn.Linear or type(m) == nn.Conv2d:
             nn.init.xavier_uniform_(m.weight)
@@ -183,7 +160,6 @@ def Train_ch6(net, train_iter, test_iter, num_epochs, lr, device):
     print(f'loss {train_l:.3f}, train acc {train_acc:.3f}, '
           f'test acc {test_acc:.3f}')
 
-lr, num_epochs, batch_size = 0.1,240,128
+lr, num_epochs, batch_size = 0.1,120,128
 train_iter2,test_iter2=load_data_CIFAR10(batch_size)
 Train_ch6(net, train_iter2, test_iter2, num_epochs, lr, d2l.try_gpu())
-
